@@ -69,5 +69,4 @@ deploy: build
 		out/deployment.txt \
 		out/abis.json \
 		> out/deployment.json
-	@cd ../webapp && pnpm wagmi generate
 .PHONY: deploy
