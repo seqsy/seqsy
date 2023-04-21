@@ -1,0 +1,34 @@
+lockfileVersion: '6.0'
+
+importers:
+
+  .:
+    devDependencies:
+      run-pty:
+        specifier: ^4.0.3
+        version: 4.0.3
+
+packages:
+
+  /nan@2.17.0:
+    resolution: {integrity: sha512-2ZTgtl0nJsO0KQCjEpxcIr5D+Yv90plTitZt9JBfQvVJDS5seMl3FOvsh3+9CoYWXf/1l5OaZzzF6nDm4cagaQ==}
+    dev: true
+
+  /node-pty@0.10.1:
+    resolution: {integrity: sha512-JTdtUS0Im/yRsWJSx7yiW9rtpfmxqxolrtnyKwPLI+6XqTAPW/O2MjS8FYL4I5TsMbH2lVgDb2VMjp+9LoQGNg==}
+    requiresBuild: true
+    dependencies:
+      nan: 2.17.0
+    dev: true
+
+  /run-pty@4.0.3:
+    resolution: {integrity: sha512-O8IWhjhChwLq7psyZZDY+Pv/CSEM7DLBXqUqEVWKMXGR18s2o2ma4IEanKWSSLBULNCpHn3n9RYvybc+7IaBig==}
+    hasBin: true
+    dependencies:
+      node-pty: 0.10.1
+      tiny-decoders: 7.0.1
+    dev: true
+
+  /tiny-decoders@7.0.1:
+    resolution: {integrity: sha512-P1LaHTLASl/lCrdtwgAAVwxt4bEAPmxpf9HMQrlCkAseaT8oH8oxm8ndy4nx5rLTcL5U/Qxp1a+FDoQfS/ZgQQ==}
+    dev: true

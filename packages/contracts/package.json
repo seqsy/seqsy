@@ -1,0 +1,9 @@
+{
+  "name": "@seqsy/contracts",
+  "author": "seqsy beasts",
+  "license": "BSD-3-Clause-Clear",
+  "version": "1.0.0",
+  "files": [
+    "*.sol"
+  ]
+}
