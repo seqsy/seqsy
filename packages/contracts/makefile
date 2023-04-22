@@ -2,6 +2,10 @@
 # (-include to ignore error if it does not exist)
 -include .env
 
+# Set CONFIG to "LOCAL" by default. Other valid values: "TEST" or "MAIN".
+CONFIG?=LOCAL
+export CONFIG
+
 # See README.md for documentation.
 
 setup:
@@ -60,8 +64,8 @@ selectors:
 # TODO: handle different deployment targets (possibly via envs?)
 deploy: build
 	@forge script src/deploy/Deploy.s.sol:DeployLocal \
-		--fork-url http://localhost:8545 \
-		--private-key $(PRIVATE_KEY0) \
+		--fork-url $(RPC_$(CONFIG)) \
+		--private-key $(PRIVATE_KEY_$(CONFIG)) \
 		--broadcast \
 		| grep "address " > out/deployment.txt
 	@cat out/deployment.txt
