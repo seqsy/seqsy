@@ -18,6 +18,7 @@ contract SequencerSet {
 
     mapping(uint8 chainId => mapping(address operator => bytes32 pubKeyHash)) OperatorToPubKeyHash;
     mapping(uint8 chainId => mapping(bytes32 pubKeyHash => address operator)) PubKeyHashToOperator;
+    mapping(bytes32 pubKeyHash => uint256[4] pubKey) PubKeyHashToPubKey;
 
     mapping(uint8 chainId => mapping(address operator => uint256 stakeAmount))
         public OperatorStake;
@@ -25,8 +26,16 @@ contract SequencerSet {
     uint256 public minimumStakeThreshold;
 
     event Staked(address staker, uint256 amount);
-    event RegisterNewSequencer(bytes32 newAggregatedPublicKey, uint8 chainId);
-    event UnregisterSequencer(bytes32 newAggregatedPublicKey, uint8 chainId);
+    event RegisterNewSequencer(
+        bytes32 newAggregatedPublicKey,
+        uint8 chainId,
+        address operator
+    );
+    event UnregisterSequencer(
+        bytes32 newAggregatedPublicKey,
+        uint8 chainId,
+        address operator
+    );
 
     uint256[4] initAggregatedPublicKey;
     bytes32 initAggregatedPublicKeyHashed;
@@ -37,7 +46,7 @@ contract SequencerSet {
 
         initAggregatedPublicKey = [BLS.G2x0, BLS.G2x1, BLS.G2y0, BLS.G2y1];
         initAggregatedPublicKeyHashed = keccak256(
-            abi.encodePacked(
+            abi.encode(
                 initAggregatedPublicKey[0],
                 initAggregatedPublicKey[1],
                 initAggregatedPublicKey[2],
@@ -96,9 +105,10 @@ contract SequencerSet {
 
         OperatorToPubKeyHash[_chainId][msg.sender] = publicKeyHashed;
         PubKeyHashToOperator[_chainId][publicKeyHashed] = msg.sender;
+        PubKeyHashToPubKey[publicKeyHashed] = publicKey;
 
         bytes32 apkHash = keccak256(
-            abi.encodePacked(
+            abi.encode(
                 _aggregatedPublicKey[0],
                 _aggregatedPublicKey[1],
                 _aggregatedPublicKey[2],
@@ -136,7 +146,7 @@ contract SequencerSet {
             );
         }
 
-        emit RegisterNewSequencer(apkHash, _chainId);
+        emit RegisterNewSequencer(apkHash, _chainId, msg.sender);
     }
 
     function getLatestSequencerState(
@@ -165,8 +175,53 @@ contract SequencerSet {
         return latestSequencerState;
     }
 
-    function deregister(
-        uint8 _chainId,
-        uint256[4] calldata _aggregatedPublicKey
-    ) external {}
+    function deregister(uint8 _chainId) external {
+        bytes32 userPubKeyHash = OperatorToPubKeyHash[_chainId][msg.sender];
+        require(userPubKeyHash != 0);
+
+        uint256[4] memory userPubKey = PubKeyHashToPubKey[userPubKeyHash];
+        uint256 sequencerStateLength = SequencerStates[_chainId].length;
+
+        require(sequencerStateLength != 0);
+
+        SequencerState memory lastSequencerState = SequencerStates[_chainId][
+            sequencerStateLength - 1
+        ];
+
+        (
+            uint256 newApk0,
+            uint256 newApk1,
+            uint256 newApk2,
+            uint256 newApk3
+        ) = BLS.removePubkeyFromAggregate(
+                userPubKey,
+                lastSequencerState.aggregatedPublicKey
+            );
+
+        bytes32 aggregatedPublicKeyHash = keccak256(
+            abi.encode([newApk0, newApk1, newApk2, newApk3])
+        );
+        if (lastSequencerState.blockNumber == block.number) {
+            SequencerStates[_chainId][
+                sequencerStateLength - 1
+            ] = SequencerState({
+                blockNumber: block.number,
+                aggregatedPublicKey: [newApk0, newApk1, newApk2, newApk3],
+                aggregatedPublicKeyHash: aggregatedPublicKeyHash
+            });
+        } else {
+            SequencerStates[_chainId].push(
+                SequencerState({
+                    blockNumber: block.number,
+                    aggregatedPublicKey: [newApk0, newApk1, newApk2, newApk3],
+                    aggregatedPublicKeyHash: aggregatedPublicKeyHash
+                })
+            );
+        }
+
+        delete OperatorToPubKeyHash[_chainId][msg.sender];
+        delete PubKeyHashToOperator[_chainId][userPubKeyHash];
+
+        emit UnregisterSequencer(aggregatedPublicKeyHash, _chainId, msg.sender);
+    }
 }

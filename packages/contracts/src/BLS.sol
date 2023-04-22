@@ -297,4 +297,88 @@ library BLS {
         }
         return (z[3], z[4]);
     }
+
+    function removePubkeyFromAggregate(
+        uint256[4] memory pubkeyToRemoveAff,
+        uint256[4] memory existingAggPubkeyAff
+    ) internal view returns (uint256, uint256, uint256, uint256) {
+        uint256[6] memory pubkeyToRemoveJac;
+        uint256[6] memory existingAggPubkeyJac;
+
+        // get x0, x1, y0, y1 from affine coordinates
+        for (uint256 i = 0; i < 4; ) {
+            pubkeyToRemoveJac[i] = pubkeyToRemoveAff[i];
+            existingAggPubkeyJac[i] = existingAggPubkeyAff[i];
+            unchecked {
+                ++i;
+            }
+        }
+        // set z0 = 1
+        pubkeyToRemoveJac[4] = 1;
+        existingAggPubkeyJac[4] = 1;
+
+        /// @notice subtract pubkeyToRemoveJac from the aggregate pubkey
+        // negate pubkeyToRemoveJac
+        pubkeyToRemoveJac[2] = (MODULUS - pubkeyToRemoveJac[2]) % MODULUS;
+        pubkeyToRemoveJac[3] = (MODULUS - pubkeyToRemoveJac[3]) % MODULUS;
+        // add the negation to existingAggPubkeyJac
+        addJac(existingAggPubkeyJac, pubkeyToRemoveJac);
+
+        // 'addJac' function above modifies the first input in memory, so now we can just return it (but first transform it back to affine)
+        return (jacToAff(existingAggPubkeyJac));
+    }
+
+    function jacToAff(
+        uint256[6] memory jac
+    ) internal view returns (uint256, uint256, uint256, uint256) {
+        if (jac[4] == 0 && jac[5] == 0) {
+            return (uint256(0), uint256(0), uint256(0), uint256(0));
+        }
+
+        (jac[4], jac[5]) = inverse(jac[4], jac[5]);
+        (uint256 b0, uint256 b1) = square(jac[4], jac[5]);
+        (jac[0], jac[1]) = mul(jac[0], jac[1], b0, b1);
+        (jac[2], jac[3]) = mul(jac[2], jac[3], b0, b1);
+        (jac[2], jac[3]) = mul(jac[2], jac[3], jac[4], jac[5]);
+
+        return (jac[0], jac[1], jac[2], jac[3]);
+    }
+
+    function inverse(
+        uint256 x0,
+        uint256 x1
+    ) internal view returns (uint256, uint256) {
+        uint256[2] memory t;
+        assembly {
+            mstore(t, mulmod(x0, x0, MODULUS))
+            mstore(add(t, 0x20), mulmod(x1, x1, MODULUS))
+            mstore(t, addmod(mload(t), mload(add(t, 0x20)), MODULUS))
+
+            let freemem := mload(0x40)
+            mstore(freemem, 0x20)
+            mstore(add(freemem, 0x20), 0x20)
+            mstore(add(freemem, 0x40), 0x20)
+            mstore(add(freemem, 0x60), mload(t))
+            // x^(n-2) = x^-1 mod q
+            mstore(add(freemem, 0x80), sub(MODULUS, 2))
+            // N = 0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47
+            mstore(add(freemem, 0xA0), MODULUS)
+            if iszero(
+                staticcall(
+                    sub(gas(), 2000),
+                    5,
+                    freemem,
+                    0xC0,
+                    add(t, 0x20),
+                    0x20
+                )
+            ) {
+                revert(0, 0)
+            }
+            mstore(t, mulmod(x0, mload(add(t, 0x20)), MODULUS))
+            mstore(add(t, 0x20), mulmod(x1, mload(add(t, 0x20)), MODULUS))
+        }
+
+        return (t[0], (MODULUS - t[1]) % MODULUS);
+    }
 }
