@@ -7,20 +7,21 @@ import "./BLS.sol";
 contract SequencerSet {
     struct SequencerState {
         uint256 blockNumber;
-        uint256[4] aggregatedPublicKey;
         bytes32 aggregatedPublicKeyHash;
+        uint256[4] aggregatedPublicKey;
     }
-
     IERC20 public StakedToken;
 
-    mapping(uint8 chainId => SequencerState[] sequencerStates)
+    mapping(uint32 chainId => SequencerState[] sequencerStates)
         public SequencerStates;
 
-    mapping(uint8 chainId => mapping(address operator => bytes32 pubKeyHash)) OperatorToPubKeyHash;
-    mapping(uint8 chainId => mapping(bytes32 pubKeyHash => address operator)) PubKeyHashToOperator;
-    mapping(bytes32 pubKeyHash => uint256[4] pubKey) PubKeyHashToPubKey;
+    mapping(uint32 chainId => mapping(address operator => bytes32 pubKeyHash))
+        public OperatorToPubKeyHash;
+    mapping(uint32 chainId => mapping(bytes32 pubKeyHash => address operator))
+        public PubKeyHashToOperator;
+    mapping(bytes32 pubKeyHash => uint256[4] pubKey) public PubKeyHashToPubKey;
 
-    mapping(uint8 chainId => mapping(address operator => uint256 stakeAmount))
+    mapping(uint32 chainId => mapping(address operator => uint256 stakeAmount))
         public OperatorStake;
 
     uint256 public minimumStakeThreshold;
@@ -28,17 +29,17 @@ contract SequencerSet {
     event Staked(address staker, uint256 amount);
     event RegisterNewSequencer(
         bytes32 newAggregatedPublicKey,
-        uint8 chainId,
+        uint32 chainId,
         address operator
     );
     event UnregisterSequencer(
         bytes32 newAggregatedPublicKey,
-        uint8 chainId,
+        uint32 chainId,
         address operator
     );
 
     uint256[4] initAggregatedPublicKey;
-    bytes32 initAggregatedPublicKeyHashed;
+    bytes32 immutable initAggregatedPublicKeyHashed;
 
     constructor(IERC20 _stakedToken, uint256 _minimumStakeThreshold) {
         StakedToken = _stakedToken;
@@ -55,7 +56,7 @@ contract SequencerSet {
         );
     }
 
-    function stake(uint256 _stakedAmount, uint8 _chainId) public {
+    function stake(uint256 _stakedAmount, uint32 _chainId) public {
         bool success = StakedToken.transferFrom(
             msg.sender,
             address(this),
@@ -67,7 +68,7 @@ contract SequencerSet {
         emit Staked(msg.sender, _stakedAmount);
     }
 
-    function register(uint8 _chainId, uint256[4] calldata publicKey) external {
+    function register(uint32 _chainId, uint256[4] calldata publicKey) external {
         require(OperatorStake[_chainId][msg.sender] >= minimumStakeThreshold);
 
         uint256 sequencerStateLength = SequencerStates[_chainId].length;
@@ -150,7 +151,7 @@ contract SequencerSet {
     }
 
     function getLatestSequencerState(
-        uint8 _chainId
+        uint32 _chainId
     ) external view returns (SequencerState memory) {
         uint256 sequencerStateLength = SequencerStates[_chainId].length;
         if (sequencerStateLength == 0) {
@@ -175,7 +176,7 @@ contract SequencerSet {
         return latestSequencerState;
     }
 
-    function deregister(uint8 _chainId) external {
+    function deregister(uint32 _chainId) external {
         bytes32 userPubKeyHash = OperatorToPubKeyHash[_chainId][msg.sender];
         require(userPubKeyHash != 0);
 
@@ -201,6 +202,7 @@ contract SequencerSet {
         bytes32 aggregatedPublicKeyHash = keccak256(
             abi.encode([newApk0, newApk1, newApk2, newApk3])
         );
+
         if (lastSequencerState.blockNumber == block.number) {
             SequencerStates[_chainId][
                 sequencerStateLength - 1
