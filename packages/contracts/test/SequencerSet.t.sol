@@ -10,7 +10,7 @@ import "openzeppelin/token/ERC20/IERC20.sol";
 
 contract SequencerSetTest is Test {
     Utils internal utils;
-    Weth weth;
+    FakeWeth weth;
     MockSequencerSet sequencerSet;
 
     address internal alice;
@@ -28,7 +28,8 @@ contract SequencerSetTest is Test {
     uint32 _chainId = 100;
 
     function setUp() public {
-        weth = new Weth();
+        weth = new FakeWeth();
+        // passing bogus randomness, but it's ok for these tests
         sequencerSet = new MockSequencerSet(IERC20(weth), 1);
 
         utils = new Utils();

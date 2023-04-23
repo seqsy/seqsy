@@ -7,7 +7,8 @@ contract MockSequencerSet is SequencerSet {
     constructor(
         IERC20 _stakedToken,
         uint256 _minimumStakeThreshold
-    ) SequencerSet(_stakedToken, _minimumStakeThreshold) {}
+    // bogus Randomness contract, but it's ok
+    ) SequencerSet(_stakedToken, Randomness(address(0)), _minimumStakeThreshold) {}
 
     function getSequencerState(
         uint32 _chainId,
