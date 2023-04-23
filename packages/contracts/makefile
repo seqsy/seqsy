@@ -74,3 +74,10 @@ deploy: build
 		out/abis.json \
 		> out/deployment.json
 .PHONY: deploy
+
+estimate-gas: build
+	@forge script Estimate \
+		--fork-url $(RPC_$(CONFIG)) --sig "estimate(address)" \
+		--private-key $(PRIVATE_KEY_$(CONFIG)) \
+		$(shell jq -r .DataStream out/deployment.json)
+.PHONY: estimate-gas
