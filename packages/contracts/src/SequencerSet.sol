@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: SEE LICENSE IN LICENSE
 pragma solidity 0.8.19;
 
-import "openzeppelin/token/ERC20/IERC20.sol";
 import "./BLS.sol";
+import "./Randomness.sol";
+
+import "openzeppelin/token/ERC20/IERC20.sol";
 
 contract SequencerSet {
     struct SequencerState {
@@ -11,6 +13,7 @@ contract SequencerSet {
         uint256[4] aggregatedPublicKey;
     }
     IERC20 public StakedToken;
+    Randomness public randomness;
 
     mapping(uint32 chainId => SequencerState[] sequencerStates)
         public SequencerStates;
@@ -25,6 +28,9 @@ contract SequencerSet {
         public OperatorStake;
 
     uint256 public minimumStakeThreshold;
+
+    address[] public Operators;
+    mapping(address operator => uint256 index) OperatorToIndex;
 
     event Staked(address staker, uint256 amount);
     event RegisterNewSequencer(
@@ -41,8 +47,9 @@ contract SequencerSet {
     uint256[4] initAggregatedPublicKey;
     bytes32 immutable initAggregatedPublicKeyHashed;
 
-    constructor(IERC20 _stakedToken, uint256 _minimumStakeThreshold) {
+    constructor(IERC20 _stakedToken, Randomness _randomness, uint256 _minimumStakeThreshold) {
         StakedToken = _stakedToken;
+        randomness = _randomness;
         _minimumStakeThreshold = minimumStakeThreshold;
 
         initAggregatedPublicKey = [BLS.G2x0, BLS.G2x1, BLS.G2y0, BLS.G2y1];
@@ -148,6 +155,8 @@ contract SequencerSet {
         }
 
         emit RegisterNewSequencer(apkHash, _chainId, msg.sender);
+        Operators.push(msg.sender);
+        OperatorToIndex[msg.sender] = Operators.length - 1;
     }
 
     function getLatestSequencerState(
@@ -225,5 +234,14 @@ contract SequencerSet {
         delete PubKeyHashToOperator[_chainId][userPubKeyHash];
 
         emit UnregisterSequencer(aggregatedPublicKeyHash, _chainId, msg.sender);
+        Operators[OperatorToIndex[msg.sender]] = Operators[Operators.length - 1];
+        Operators.pop();
+    }
+
+    // TODO(norswap): This only works under the condition that the sequencer set is stable.
+    // Otherwise, we need to track the set off-chain, either via a subgraph queried by the node,
+    // or directly via node logic (requires archive node access).
+    function proposerForBlock(uint32 chainID, uint256 blockNumber) public view returns(address) {
+        return Operators[uint256(randomness.randomnessForBlock(chainID, blockNumber)) % Operators.length];
     }
 }

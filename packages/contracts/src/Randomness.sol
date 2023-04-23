@@ -19,7 +19,7 @@ contract Randomness {
 
     // This is the seed for the randomness beacon for the given chain.
     // NOTE(norswap): The L1 chain validator can bias this.
-    function randomnessForBlock(uint32 chainID, uint256 blockNumber) public returns (bytes32) {
+    function randomnessForBlock(uint32 chainID, uint256 blockNumber) public view returns (bytes32) {
         uint256 l1BlockNumber =
             rollups.implementations(chainID).getL1BlockNumberForL2BlockNumber(blockNumber);
         return keccak256(abi.encodePacked(l1BlockNumber, chainID, blockNumber));

@@ -2,10 +2,12 @@
 pragma solidity ^0.8.0;
 
 import "../DataStream.sol";
+import "../FakeWeth.sol";
 import "../L1BlockHistory.sol";
 import "../OneForOneRollupImplem.sol";
 import "../Randomness.sol";
 import "../Rollups.sol";
+import "../SequencerSet.sol";
 
 import "forge-std/Script.sol";
 
@@ -18,7 +20,8 @@ contract DeployLocal is Script {
         L1BlockHistory l1BlockHistory = new L1BlockHistory();
         Rollups rollups = new Rollups();
         Randomness randomness = new Randomness(rollups);
-        // TODO deploy sequencer registry
+        FakeWeth fakeWeth = new FakeWeth();
+        SequencerSet sequencerSet = new SequencerSet(fakeWeth, randomness, 1 ether);
         DataStream dataStream = new DataStream(address(0));
 
         // Initialize our test rollup.
@@ -27,8 +30,10 @@ contract DeployLocal is Script {
         rollups.register(chainID, address(rollup));
 
         console2.log("L1BlockHistory address",          address(l1BlockHistory));
-        console2.log("Randomness address",              address(randomness));
         console2.log("Rollups address",                 address(rollups));
+        console2.log("Randomness address",              address(randomness));
+        console2.log("FakeWeth address",                address(fakeWeth));
+        console2.log("SequencerSet address",            address(sequencerSet));
         console2.log("DataStream address",              address(dataStream));
         console2.log("OneForOneRollupImplem address",   address(rollup));
 
@@ -52,7 +57,8 @@ contract DeployPublic is Script {
         L1BlockHistory l1BlockHistory = new L1BlockHistory{salt: salt}();
         Rollups rollups = new Rollups{salt: salt}();
         Randomness randomness = new Randomness{salt: salt}(rollups);
-        // TODO deploy sequencer registry
+        FakeWeth fakeWeth = new FakeWeth{salt: salt}();
+        SequencerSet sequencerSet = new SequencerSet{salt: salt}(fakeWeth, randomness, 1 ether);
         DataStream dataStream = new DataStream{salt: salt}(address(0));
 
         // Initialize our test rollup.
@@ -61,8 +67,10 @@ contract DeployPublic is Script {
         rollups.register(chainID, address(rollup));
 
         console2.log("L1BlockHistory address",          address(l1BlockHistory));
-        console2.log("Randomness address",              address(randomness));
         console2.log("Rollups address",                 address(rollups));
+        console2.log("Randomness address",              address(randomness));
+        console2.log("FakeWeth address",                address(fakeWeth));
+        console2.log("SequencerSet address",            address(sequencerSet));
         console2.log("DataStream address",              address(dataStream));
         console2.log("OneForOneRollupImplem address",   address(rollup));
 
